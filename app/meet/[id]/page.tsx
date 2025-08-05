@@ -25,7 +25,7 @@ async function fetchSession(id: string) {
 export default async function MeetPage({ params }: MeetPageProps) {
   const id = params.id;
 
-  if (!id || typeof id !== 'string' || !/^[a-z0-9]{6}$/.test(id)) {
+  if (!id || typeof id !== 'string' || !/^[a-zA-Z0-9-_]{6,}$/.test(id)) {
     notFound();
   }
 

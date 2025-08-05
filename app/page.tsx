@@ -8,9 +8,9 @@ export default function Home() {
   const generateLink = async () => {
     const res = await fetch('/api/session', { method: 'POST' });
     const data = await res.json();
-    const link = `${window.location.origin}/meet/${data.sessionId}`;
+    const link = `${window.location.origin}/meet/${data.id}`; // <- use data.id
     setSessionLink(link);
-  };
+  };  
 
   return (
     <main className="min-h-screen flex flex-col items-center justify-center px-4 py-10 bg-white text-gray-900 dark:bg-gray-900 dark:text-white transition">
