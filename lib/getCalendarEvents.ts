@@ -5,7 +5,13 @@ import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 export async function getCalendarEvents() {
   const session = await getServerSession(authOptions);
 
-  if (!session || !session.accessToken) {
+  if (!session) {
+    console.warn('[Calendar Fetch] No session found.');
+    return [];
+  }
+
+  if (!session.accessToken) {
+    console.warn('[Calendar Fetch] Session found but no access token. User may need to re-auth.');
     return [];
   }
 
