@@ -1,113 +1,93 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useSession, signIn, signOut } from 'next-auth/react';
+import { useEffect, useMemo, useState } from 'react';
+import { useSession, signIn } from 'next-auth/react';
 
-type GEvent = {
-  id?: string;
-  summary?: string;
-  start?: { dateTime?: string; date?: string };
-  end?: { dateTime?: string; date?: string };
-};
+type BusyRange = { start: string; end: string };
 
 export default function CalendarPanel() {
   const { data: session, status } = useSession();
-  const [events, setEvents] = useState<GEvent[] | null>(null);
+  const [busy, setBusy] = useState<BusyRange[]>([]);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
+  // Define a default 7‑day window (now -> +7d). You can adjust from/to via UI later.
+  const { fromISO, toISO } = useMemo(() => {
+    const from = new Date();
+    const to = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+    return { fromISO: from.toISOString(), toISO: to.toISOString() };
+  }, []);
+
   useEffect(() => {
-    if (status !== 'authenticated') return;
-    // If we don’t have an access token yet, don’t fetch calendar
-    if (!session?.accessToken) return;
-
     let cancelled = false;
-    setLoading(true);
-    setErr(null);
 
-    fetch('/api/calendar')
-      .then(async (r) => {
-        if (!r.ok) throw new Error(await r.text());
-        return r.json();
-      })
-      .then((items: GEvent[]) => {
-        if (!cancelled) setEvents(items ?? []);
-      })
-      .catch((e) => {
-        if (!cancelled) setErr('Failed to load calendar.');
+    async function load() {
+      setLoading(true);
+      setErr(null);
+      try {
+        const res = await fetch('/api/calendar', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ from: fromISO, to: toISO }),
+        });
+        if (!res.ok) {
+          // If we’re authenticated but get a 401, access token might be missing/expired.
+          if (res.status === 401) {
+            // Safety fallback: force a consented sign‑in to guarantee calendar connection.
+            await signIn('google', { prompt: 'consent', callbackUrl: window.location.href });
+            return;
+          }
+          throw new Error(await res.text());
+        }
+        const data = await res.json();
+        if (!cancelled) {
+          setBusy(data.busy ?? []);
+        }
+      } catch (e) {
         console.error('[Calendar fetch error]', e);
-      })
-      .finally(() => !cancelled && setLoading(false));
+        if (!cancelled) setErr('Failed to load calendar availability.');
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
 
+    if (status === 'authenticated') {
+      // We expect calendar to be connected on first sign‑in.
+      // If accessToken is somehow missing, try a quick re-consent.
+      if (!session?.accessToken) {
+        signIn('google', { prompt: 'consent', callbackUrl: window.location.href });
+        return;
+      }
+      load();
+    }
     return () => {
       cancelled = true;
     };
-  }, [status, session?.accessToken]);
+  }, [status, session?.accessToken, fromISO, toISO]);
 
-  if (status === 'loading') {
-    return <p className="text-gray-500">Checking your session…</p>;
-  }
+  if (status === 'loading') return <p className="text-gray-500">Checking your session…</p>;
+  if (status === 'unauthenticated')
+    return <p className="text-gray-400">Sign in to see calendar availability.</p>;
 
-  if (status === 'unauthenticated') {
-    return (
-      <div className="space-y-3">
-        <p className="text-gray-400">You’re not signed in.</p>
-        <button
-          className="px-3 py-2 rounded bg-blue-600 text-white"
-          onClick={() => signIn('google')}
-        >
-          Sign in with Google
-        </button>
-      </div>
-    );
-  }
-
-  // Authenticated but missing token -> force a consented sign-in
-  if (!session?.accessToken) {
-    return (
-      <div className="space-y-3">
-        <p className="text-gray-400">Google Calendar is not connected.</p>
-        <button
-          className="px-3 py-2 rounded bg-blue-600 text-white"
-          onClick={() =>
-            signIn('google', {
-              // ensures Google shows the consent screen again
-              prompt: 'consent',
-              // keep same scope as your provider configuration (redundant but explicit)
-              // NOTE: next-auth will merge/override with provider’s default scope
-              callbackUrl: window.location.href,
-            })
-          }
-        >
-          Connect Google Calendar
-        </button>
-        <button
-          className="px-3 py-2 rounded bg-gray-700 text-white"
-          onClick={() => signOut()}
-        >
-          Sign out
-        </button>
-      </div>
-    );
-  }
-
-  if (loading) return <p className="text-gray-500">Loading your events…</p>;
+  if (loading) return <p className="text-gray-500">Loading your availability…</p>;
   if (err) return <p className="text-red-500">{err}</p>;
-  if (!events || events.length === 0)
-    return <p className="text-gray-400">No events found.</p>;
+
+  if (!busy.length) return <p className="text-gray-400">No busy blocks in the next 7 days 🎉</p>;
 
   return (
-    <ul className="text-left space-y-2">
-      {events.map((e) => {
-        const start =
-          e.start?.dateTime ?? e.start?.date ?? '(no start time provided)';
-        return (
-          <li key={e.id ?? Math.random()} className="p-3 rounded bg-gray-800/40">
-            <div className="font-medium">{e.summary ?? '(no title)'}</div>
-            <div className="text-sm opacity-80">{start}</div>
+    <div className="text-left space-y-2">
+      <div className="text-sm mb-2 opacity-80">
+        Busy blocks (Google FreeBusy) over the next 7 days:
+      </div>
+      <ul className="space-y-2">
+        {busy.map((b, i) => (
+          <li key={`${b.start}-${b.end}-${i}`} className="p-3 rounded bg-gray-800/40">
+            <div className="font-medium">
+              {new Date(b.start).toLocaleString()} → {new Date(b.end).toLocaleString()}
+            </div>
           </li>
-        );
-      })}
-    </ul>
+        ))}
+      </ul>
+    </div>
   );
 }

@@ -1,34 +1,28 @@
-import { getServerSession } from 'next-auth';
-import { authOptions } from '../auth/[...nextauth]/route';
-import { google } from 'googleapis';
-import { NextResponse } from 'next/server';
+import { getServerSession } from "next-auth";
+import { authOptions } from "../auth/[...nextauth]/route";
+import { NextResponse } from "next/server";
+import { fetchFreeBusy } from "@/lib/google";
 
-export async function GET() {
+// POST /api/calendar  { from: string, to: string } (ISO)
+export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
 
-  console.log('[DEBUG] Session:', session);
-
-  if (!session || !session.accessToken) {
-    return NextResponse.json({ error: 'Not authenticated or token missing' }, { status: 401 });
+  if (!session || !(session as any).accessToken) {
+    return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
 
-  const oauth2Client = new google.auth.OAuth2();
-  oauth2Client.setCredentials({ access_token: session.accessToken });
-
-  const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
+  const { from, to } = await req.json().catch(() => ({}));
+  const timeMin = from ?? new Date().toISOString();
+  const timeMax =
+    to ??
+    new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(); // default 7 days
 
   try {
-    const events = await calendar.events.list({
-      calendarId: 'primary',
-      timeMin: new Date().toISOString(),
-      maxResults: 10,
-      singleEvents: true,
-      orderBy: 'startTime',
-    });
-
-    return NextResponse.json(events.data.items || []);
+    const busy = await fetchFreeBusy((session as any).accessToken, timeMin, timeMax);
+    return NextResponse.json({ busy });
   } catch (error) {
-    console.error('[CALENDAR ERROR]', error);
-    return NextResponse.json({ error: 'Failed to fetch calendar events' }, { status: 500 });
+    console.error("[CALENDAR ERROR]", error);
+    // If we ever wanted to detect token error, we could surface (session as any).tokenError here.
+    return NextResponse.json({ error: "Failed to fetch calendar data" }, { status: 500 });
   }
 }

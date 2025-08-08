@@ -8,11 +8,11 @@ datasource db {
 }
 
 model User {
-  id             String          @id @default(cuid())
+  id             String           @id @default(cuid())
   name           String?
-  email          String?         @unique
+  email          String?          @unique
   emailVerified  DateTime?
-  image          String?         
+  image          String?
   avatarUrl      String?
 
   accounts       Account[]
@@ -21,41 +21,43 @@ model User {
   hostedSessions MeetingSession[] @relation("Host")
 }
 
-
 model MeetingSession {
-  id        String         @id @default(cuid())
-  createdAt DateTime       @default(now())
-  updatedAt DateTime       @updatedAt
+  id        String          @id @default(cuid())
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
   data      Json
   users     SessionUser[]
-  hostId    String?        
-  host      User?          @relation("Host", fields: [hostId], references: [id])
+  hostId    String?
+  host      User?           @relation("Host", fields: [hostId], references: [id])
 }
 
 model SessionUser {
-  id        String   @id @default(cuid())
+  id        String          @id @default(cuid())
   session   MeetingSession  @relation(fields: [sessionId], references: [id])
   sessionId String
-  user      User     @relation(fields: [userId], references: [id])
+  user      User            @relation(fields: [userId], references: [id])
   userId    String
-  joinedAt  DateTime @default(now())
+  joinedAt  DateTime        @default(now())
 }
 
-// === 🔐 Required by NextAuth below ===
+// === Required by NextAuth below ===
 
 model Account {
-  id                 String  @id @default(cuid())
-  userId             String
-  type               String
-  provider           String
-  providerAccountId  String
-  refresh_token      String? 
-  access_token       String? 
-  expires_at         Int?    
-  token_type         String? 
-  scope              String? 
-  id_token           String? 
-  session_state      String? 
+  id                        String  @id @default(cuid())
+  userId                    String
+  type                      String
+  provider                  String
+  providerAccountId         String
+  refresh_token             String?
+  access_token              String?
+  expires_at                Int?
+  token_type                String?
+  scope                     String?
+  id_token                  String?
+  session_state             String?
+
+  // Added for NextAuth
+  refresh_token_expires_in  Int?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 

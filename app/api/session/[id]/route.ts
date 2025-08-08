@@ -2,32 +2,28 @@ import { prisma } from '@/lib/prisma';
 import { NextResponse } from 'next/server';
 
 export async function GET(
-  request: Request,
-  { params }: { params: { id: string } }
+  _req: Request,
+  { params }: { params: Promise<{ id: string }> }   //   params is a Promise
 ) {
+  const { id } = await params;                       //  await it
+
   try {
     const session = await prisma.meetingSession.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         users: {
-          include: {
-            user: true, // pulls name, image, email, etc.
-          },
+          include: { user: true },
         },
       },
     });
 
     if (!session) {
-      return new NextResponse(JSON.stringify({ error: 'Session not found' }), {
-        status: 404,
-      });
+      return NextResponse.json({ error: 'Session not found' }, { status: 404 });
     }
 
     return NextResponse.json(session);
   } catch (e) {
     console.error('[SESSION FETCH ERROR]', e);
-    return new NextResponse(JSON.stringify({ error: 'Server error' }), {
-      status: 500,
-    });
+    return NextResponse.json({ error: 'Server error' }, { status: 500 });
   }
 }
