@@ -1,36 +1,115 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Meeting Scheduler – Real-Time Calendar Availability
 
-## Getting Started
+A modern, collaborative meeting scheduling platform that aggregates **Google Calendar** availability from all participants in a session and visually displays **when everyone is free vs. when anyone is busy**.
 
-First, run the development server:
+This project is built with **Next.js 15**, styled with **Tailwind CSS**, powered by **Prisma ORM**, and backed by **NextAuth.js** for secure authentication. It is designed for real-time, multi-user availability planning, with future deployment plans on **AWS**.
 
+---
+
+## 📌 Features
+
+- **Google Calendar Integration**  
+  Automatic calendar connection on first sign-in using Google OAuth2 with offline access and refresh tokens.
+
+- **Aggregated Availability View**  
+  Displays a **7-day rolling grid** in 30-minute blocks from **8:00 AM – 8:00 PM**.  
+  - Green = All participants free  
+  - Gray = At least one participant busy  
+  - (Planned) Show busy counts & darker shading based on number busy.
+
+- **Real-Time Collaboration**  
+  When multiple users join the same session, availability is aggregated and updated for everyone.
+
+- **Secure Authentication**  
+  - NextAuth.js with Google provider  
+  - Prisma Adapter for database persistence  
+  - JWT sessions with refresh token handling
+
+- **Database Layer**  
+  SQLite in local dev; easy migration to **PostgreSQL on AWS RDS** for production.
+
+---
+
+## 🛠 Tech Stack
+
+| Category        | Technology |
+|-----------------|------------|
+| Framework       | [Next.js 15](https://nextjs.org/) |
+| Styling         | [Tailwind CSS](https://tailwindcss.com/) |
+| ORM & Database  | [Prisma](https://prisma.io/) + SQLite (local), PostgreSQL planned for AWS |
+| Authentication  | [NextAuth.js](https://next-auth.js.org/) |
+| API Layer       | Next.js Route Handlers |
+| Calendar API    | [Google Calendar API](https://developers.google.com/calendar) |
+| Hosting (future)| AWS (Amplify or ECS + RDS) |
+
+---
+
+## 🚀 Deployment Plan (AWS)
+
+1. **Frontend** → Deploy with **AWS Amplify** or **Vercel** for simplicity.
+2. **Backend APIs** →  
+   - Option 1: Keep serverless APIs with Next.js on Amplify.  
+   - Option 2: Move API routes to **AWS Lambda** (via SST or Serverless Framework).
+3. **Database** →  
+   - Migrate from SQLite to **PostgreSQL on AWS RDS**.  
+   - Update `DATABASE_URL` in `.env`.
+4. **Environment Variables** → Store in AWS Secrets Manager or Parameter Store.
+5. **Google OAuth Credentials** → Update `NEXTAUTH_URL` in Google Cloud Console to production domain.
+
+---
+
+## ⚙️ Setup & Development
+
+### 1. Clone the repo
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+git clone https://github.com/yourusername/meeting-scheduler.git
+cd meeting-scheduler
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 2. Install dependencies
+```bash
+npm install
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 3. Create .env.local
+```bash
+NEXT_PUBLIC_BASE_URL=http://localhost:3000
+GOOGLE_CLIENT_ID=your-google-client-id
+GOOGLE_CLIENT_SECRET=your-google-client-secret
+NEXTAUTH_SECRET=your-random-secret
+NEXTAUTH_URL=http://localhost:3000
+DATABASE_URL="file:./dev.db"
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 4. Set up the database
+```bash
+npx prisma migrate dev --name init
+```
 
-## Learn More
+### 5. Run teh app
+```bash
+npm run dev
+```
 
-To learn more about Next.js, take a look at the following resources:
+---
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 📈 Roadmap
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- AWS deployment with RDS PostgreSQL
 
-## Deploy on Vercel
+- Live updates via WebSockets or Next.js Server Actions
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- “Busy count” shading for blocks
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Outlook Calendar integration
+
+- Session chat & notes
+
+- Time zone handling for global teams
+
+---
+
+## 📄 License
+
+MIT License © 2025 Benjamin Manicke
+
