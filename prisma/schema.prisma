@@ -80,3 +80,16 @@ model VerificationToken {
 
   @@unique([identifier, token])
 }
+
+// === Cache of each user's busy ranges per session & window ===
+model MeetingAvailability {
+  id        String   @id @default(cuid())
+  sessionId String
+  userId    String
+  from      DateTime
+  to        DateTime
+  busy      Json
+  updatedAt DateTime @updatedAt
+
+  @@unique([sessionId, userId, from, to], name: "sessionId_userId_from_to")
+}
